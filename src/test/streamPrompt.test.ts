@@ -6,6 +6,7 @@ import {
   readStream,
 } from "../index";
 import { generateMockMarkdown } from "./mocks/mockMd";
+import { mock_messages } from "./mocks/mockMessages";
 
 vi.mock("openai", () => {
   return {
@@ -25,9 +26,10 @@ vi.mock("openai", () => {
 
 describe("streamPrompt", () => {
   it("should process streamed data correctly", async () => {
-    const mockCompletion = await setUpCompletionForStream({
-      OPENAI_API_KEY: "test-key",
-    });
+    const mockCompletion = await setUpCompletionForStream(
+      "test-key",
+      mock_messages
+    );
     const stream = streamPrompt(mockCompletion);
     expect(stream).toBeInstanceOf(ReadableStream);
     const result = await readStream(stream as ReadableStream);

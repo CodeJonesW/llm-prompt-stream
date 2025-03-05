@@ -1,6 +1,6 @@
 {
   "name": "llm-prompt-stream",
-  "version": "1.0.1",
+  "version": "1.0.22",
   "description": "",
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
@@ -25,5 +25,6 @@
   "module": "dist/index.mjs",
   "dependencies": {
     "openai": "^4.86.1"
-  }
+  },
+  "type": "module"
 }

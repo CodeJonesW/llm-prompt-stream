@@ -2,3 +2,5 @@
 src/demo.ts
 node_modules
 dist
+output.md
+notes.txt

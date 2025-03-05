@@ -1,11 +1,6 @@
 import OpenAI from "openai";
-import * as dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
-
-dotenv.config();
-
-export const openAIKey = process.env.OPENAI_API_KEY;
 
 export const streamPrompt = (completion: any) => {
   let buffer = "";
@@ -54,7 +49,7 @@ export const streamPrompt = (completion: any) => {
 };
 
 export const setUpCompletionForStream = async (
-  OPENAI_API_KEY: any,
+  OPENAI_API_KEY: string,
   messages: any = []
 ) => {
   const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
@@ -113,3 +108,11 @@ export async function readStream(
   }
   return fullResponse;
 }
+
+export const createCompletionAndStream = async (
+  openAIKey: string,
+  messages: any
+) => {
+  const completion = await setUpCompletionForStream(openAIKey, messages);
+  return streamPrompt(completion);
+};

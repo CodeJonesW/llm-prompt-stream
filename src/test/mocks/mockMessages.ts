@@ -18,7 +18,7 @@ export const mock_messages = [
   },
   {
     role: "system",
-    content: `Outline detailed plan to achieve the goal.`,
+    content: `Outline detailed plan to achieve the goal. 10,000 words`,
   },
   {
     role: "system",
