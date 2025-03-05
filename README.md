@@ -13,52 +13,52 @@ A lightweight Node.js module for streaming OpenAI responses with Markdown format
 
 Install via npm:
 
-\`\`\`sh
+```sh
 npm install llm-prompt-stream
-\`\`\`
+```
 
 ## 🔧 Usage
 
 ### **Basic Example: Streaming an OpenAI Completion**
 
-\`\`\`ts
+```ts
 import { createCompletionAndStream, readStream } from "llm-prompt-stream";
 
 // Your OpenAI API key
 const openAIKey = "your-api-key";
 
 const messages = [
-{ role: "system", content: "You are a helpful assistant." },
-{ role: "user", content: "Tell me a fun fact!" }
+  { role: "system", content: "You are a helpful assistant." },
+  { role: "user", content: "Tell me a fun fact!" },
 ];
 
 async function run() {
-const stream = await createCompletionAndStream(openAIKey, messages);
-const response = await readStream(stream);
-console.log("Full Response:", response);
+  const stream = await createCompletionAndStream(openAIKey, messages);
+  const response = await readStream(stream);
+  console.log("Full Response:", response);
 }
 
 run();
-\`\`\`
+```
 
 ---
 
 ### **Saving Streamed Response to a Markdown File**
 
-\`\`\`ts
+```ts
 import { createCompletionAndStream, readStream } from "llm-prompt-stream";
 
 const openAIKey = "your-api-key";
 const messages = [{ role: "user", content: "Give me a summary of AI." }];
 
 async function run() {
-const stream = await createCompletionAndStream(openAIKey, messages);
-await readStream(stream, true, "output.md");
-console.log("Response saved to output.md!");
+  const stream = await createCompletionAndStream(openAIKey, messages);
+  await readStream(stream, true, "output.md");
+  console.log("Response saved to output.md!");
 }
 
 run();
-\`\`\`
+```
 
 ---
 
@@ -91,9 +91,9 @@ Returns: A **string** containing the full response.
 
 To run tests locally:
 
-\`\`\`sh
+```sh
 npm test
-\`\`\`
+```
 
 ---
 
