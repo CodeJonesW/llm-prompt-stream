@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import * as dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
@@ -68,13 +70,17 @@ export function* parseMarkdownToCompletions(markdown: string) {
   const lines = markdown.split("\n");
   for (const line of lines) {
     if (line.trim()) {
-      yield { choices: [{ delta: { content: line + "\n" } }] }; // Append newline to simulate natural text flow
+      yield { choices: [{ delta: { content: line + "\n" } }] };
     }
   }
-  yield { choices: [{ delta: { content: "" } }] }; // End the stream
+  yield { choices: [{ delta: { content: "" } }] };
 }
 
-export async function readStream(stream: ReadableStream): Promise<string> {
+export async function readStream(
+  stream: ReadableStream,
+  createFile: boolean = false,
+  outputFilename: string = "response.md"
+): Promise<string> {
   if (!stream || !(stream instanceof ReadableStream)) {
     throw new Error("❌ Invalid stream provided to readStream.");
   }
@@ -82,6 +88,12 @@ export async function readStream(stream: ReadableStream): Promise<string> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let fullResponse = "";
+
+  const filePath = path.resolve(outputFilename);
+  let fileStream = null;
+  if (createFile) {
+    fileStream = fs.createWriteStream(filePath, { encoding: "utf-8" });
+  }
 
   let done = false;
   while (!done) {
@@ -91,9 +103,13 @@ export async function readStream(stream: ReadableStream): Promise<string> {
     if (value) {
       const chunk = decoder.decode(value, { stream: true });
       fullResponse += chunk;
-      console.log(chunk); // 🔹 Log each chunk in real-time
+      if (createFile && fileStream) {
+        fileStream.write(chunk);
+      }
     }
   }
-
+  if (fileStream) {
+    fileStream.end();
+  }
   return fullResponse;
 }
