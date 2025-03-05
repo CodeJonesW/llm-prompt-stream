@@ -1,0 +1,4 @@
+.env
+src/demo.ts
+node_modules
+dist
