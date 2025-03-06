@@ -1,6 +1,8 @@
 # 📜 llm-prompt-stream
 
-A lightweight Node.js module for streaming OpenAI responses with Markdown formatting and file saving support.
+A lightweight Node.js module for streaming OpenAI responses with complete markdown chunks for improved readability during streaming.
+
+Avoid broken markdown syntax during stream so the end user sees the content formatted correctly.
 
 ## 🚀 Features
 
@@ -59,33 +61,6 @@ async function run() {
 
 run();
 ```
-
----
-
-## 🛠 API Reference
-
-### \`createCompletionAndStream(openAIKey: string, messages: any[])\`
-
-Creates an OpenAI streaming completion.
-
-- **\`openAIKey\`** - Your OpenAI API key.
-- **\`messages\`** - Array of message objects for the chat completion.
-
-Returns: A **\`ReadableStream\`** containing the OpenAI response.
-
----
-
-### \`readStream(stream: ReadableStream, createFile?: boolean, outputFilename?: string)\`
-
-Reads and processes a streamed response.
-
-- **\`stream\`** - The OpenAI response stream.
-- **\`createFile\`** _(optional)_ - If \`true\`, writes response to a file.
-- **\`outputFilename\`** _(optional)_ - Filename for the saved response (default: \`response.md\`).
-
-Returns: A **string** containing the full response.
-
----
 
 ## 🧪 Running Tests
 
