@@ -74,7 +74,8 @@ export function* parseMarkdownToCompletions(markdown: string) {
 export async function readStream(
   stream: ReadableStream,
   createFile: boolean = false,
-  outputFilename: string = "response.md"
+  outputFilename: string = "response.md",
+  logInfo: boolean = false
 ): Promise<string> {
   if (!stream || !(stream instanceof ReadableStream)) {
     throw new Error("❌ Invalid stream provided to readStream.");
@@ -97,6 +98,9 @@ export async function readStream(
 
     if (value) {
       const chunk = decoder.decode(value, { stream: true });
+      if (logInfo) {
+        console.log(chunk);
+      }
       fullResponse += chunk;
       if (createFile && fileStream) {
         fileStream.write(chunk);
@@ -105,6 +109,9 @@ export async function readStream(
   }
   if (fileStream) {
     fileStream.end();
+  }
+  if (logInfo) {
+    console.log("Full Stream Response: ", fullResponse);
   }
   return fullResponse;
 }
