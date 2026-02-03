@@ -1,44 +1,103 @@
-import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 
-export const streamPrompt = (completion: any) => {
+export const streamPrompt = (source: AsyncIterable<string>) => {
   let buffer = "";
-  let rawTotalResponse = "";
-  let totalFormattedResponse = "";
+  let inCodeBlock = false;
+  let codeBlockBuffer = "";
+  let tableBuffer = "";
+  let inTable = false;
+
+  const isTableRow = (line: string) => {
+    const trimmed = line.trim();
+    return (
+      trimmed.startsWith("|") &&
+      trimmed.endsWith("|") &&
+      trimmed.length > 1
+    );
+  };
+
+  const isFenceLine = (line: string) => line.trimStart().startsWith("```");
 
   try {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
-        for await (const chunk of completion) {
-          let content = chunk.choices[0]?.delta?.content;
 
-          if (content) {
-            rawTotalResponse += content;
-            buffer += content;
+        const emit = (text: string) => {
+          if (text) controller.enqueue(encoder.encode(text));
+        };
 
-            let lines = buffer.split(/(?=\n|^#{1,4}|\s-\s|\n\s\*\s|\n\d+\.\s)/);
-            buffer = "";
+        const flushTable = () => {
+          if (tableBuffer) {
+            emit(tableBuffer);
+            tableBuffer = "";
+            inTable = false;
+          }
+        };
 
-            lines.forEach((line, index) => {
-              if (index === lines.length - 1 && !line.endsWith("\n")) {
-                buffer = line;
-              } else {
-                totalFormattedResponse += line;
-                controller.enqueue(encoder.encode(line));
-              }
-            });
+        const processLine = (line: string) => {
+          // Inside a code block: accumulate until closing fence
+          if (inCodeBlock) {
+            codeBlockBuffer += line;
+            if (isFenceLine(line) && codeBlockBuffer !== line) {
+              // This is the closing fence — emit the entire code block
+              inCodeBlock = false;
+              flushTable();
+              emit(codeBlockBuffer);
+              codeBlockBuffer = "";
+            }
+            return;
+          }
+
+          // Opening code fence
+          if (isFenceLine(line)) {
+            flushTable();
+            inCodeBlock = true;
+            codeBlockBuffer = line;
+            return;
+          }
+
+          // Table row
+          if (isTableRow(line)) {
+            inTable = true;
+            tableBuffer += line;
+            return;
+          }
+
+          // Non-table line while we were accumulating a table
+          if (inTable) {
+            flushTable();
+          }
+
+          emit(line);
+        };
+
+        for await (const content of source) {
+          if (!content) continue;
+          buffer += content;
+
+          // Process all complete lines (ending with \n)
+          let newlineIdx: number;
+          while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, newlineIdx + 1);
+            buffer = buffer.slice(newlineIdx + 1);
+            processLine(line);
           }
         }
 
+        // Process any remaining partial line
         if (buffer) {
-          totalFormattedResponse += buffer;
-          controller.enqueue(encoder.encode(buffer));
+          processLine(buffer);
         }
 
-        controller.enqueue(encoder.encode(`event: done\n\n`));
+        // Flush any remaining buffered content
+        if (inCodeBlock && codeBlockBuffer) {
+          emit(codeBlockBuffer);
+        }
+        flushTable();
 
+        emit("event: done\n\n");
         controller.close();
       },
     });
@@ -47,29 +106,6 @@ export const streamPrompt = (completion: any) => {
     console.log(e);
   }
 };
-
-export const setUpCompletionForStream = async (
-  OPENAI_API_KEY: string,
-  messages: any = []
-) => {
-  const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-  const completion = await openai.chat.completions.create({
-    stream: true,
-    messages: messages,
-    model: "gpt-4o-mini",
-  });
-  return completion;
-};
-
-export function* parseMarkdownToCompletions(markdown: string) {
-  const lines = markdown.split("\n");
-  for (const line of lines) {
-    if (line.trim()) {
-      yield { choices: [{ delta: { content: line + "\n" } }] };
-    }
-  }
-  yield { choices: [{ delta: { content: "" } }] };
-}
 
 export async function readStream(
   stream: ReadableStream,
@@ -115,11 +151,3 @@ export async function readStream(
   }
   return fullResponse;
 }
-
-export const createCompletionAndStream = async (
-  openAIKey: string,
-  messages: any
-) => {
-  const completion = await setUpCompletionForStream(openAIKey, messages);
-  return streamPrompt(completion);
-};

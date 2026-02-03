@@ -1,22 +1,28 @@
 # llm-prompt-stream
 
-A Node.js/TypeScript library that streams OpenAI API responses while keeping markdown formatting intact. The core problem it solves: when you stream LLM responses token-by-token, markdown syntax can break mid-render. This library buffers content intelligently and only flushes complete markdown elements.
+A provider-agnostic, markdown-aware stream buffer for LLM responses. The core problem it solves: when you stream LLM responses token-by-token, markdown syntax can break mid-render. This library buffers content intelligently and only flushes complete markdown elements.
+
+Works with any LLM provider — OpenAI, Anthropic, Google, or any source that produces an async iterable of strings.
 
 ## Key Architecture
 
-- **`streamPrompt()`** — The main function. Takes an OpenAI completion stream, buffers chunks, and splits on markdown boundaries (headings, bullet points, numbered lists, newlines) using a lookahead regex. Returns a `ReadableStream`.
-- **`setUpCompletionForStream()`** — Sets up the OpenAI client and creates a streaming completion with `gpt-4o-mini`.
-- **`createCompletionAndStream()`** — Convenience wrapper combining setup + streaming.
-- **`readStream()`** — Consumes a stream, optionally writes to a file, and returns the full response as a string. Supports a `logInfo` flag for console output.
-- **`parseMarkdownToCompletions()`** — A generator that converts markdown into mock OpenAI chunks for testing.
+- **`streamPrompt(source)`** — Takes any `AsyncIterable<string>` and returns a `ReadableStream`. Buffers chunks and splits on markdown boundaries so you never get a half-rendered heading or broken code block.
+- **`readStream(stream)`** — Consumes a `ReadableStream`, optionally writes to a file, and returns the full response as a string. Supports a `logInfo` flag for console output.
+
+## Markdown Constructs Handled
+
+- **Headings** (`#`, `##`, `###`, `####`) — split before each heading
+- **Bullet lists** (`- ` and `* `) — split before each item
+- **Numbered lists** (`1. `, `2. `, etc.) — split before each item
+- **Code blocks** (triple-backtick fences) — buffered and emitted as a single complete chunk
+- **Tables** (`|`-delimited rows) — consecutive table rows are buffered and emitted together
+- **Blockquotes** (`> ` prefix) — split correctly at blockquote boundaries
 
 ## Tech Stack
 
-TypeScript, tsup (dual ESM/CJS build), Vitest for testing, OpenAI SDK.
+TypeScript, tsup (dual ESM/CJS build), Vitest for testing. Zero runtime dependencies.
 
 ## Installation
-
-Install via npm:
 
 ```sh
 npm install llm-prompt-stream
@@ -24,50 +30,97 @@ npm install llm-prompt-stream
 
 ## Usage
 
-### Basic Example: Streaming an OpenAI Completion
+### With OpenAI
 
 ```ts
-import { createCompletionAndStream, readStream } from "llm-prompt-stream";
+import OpenAI from "openai";
+import { streamPrompt, readStream } from "llm-prompt-stream";
 
-const openAIKey = "your-api-key";
-
-const messages = [
-  { role: "system", content: "You are a helpful assistant." },
-  { role: "user", content: "Tell me a fun fact!" },
-];
+const openai = new OpenAI({ apiKey: "your-key" });
 
 async function run() {
-  const stream = await createCompletionAndStream(openAIKey, messages);
-  const response = await readStream(stream);
-  console.log("Full Response:", response);
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    stream: true,
+    messages: [{ role: "user", content: "Explain closures in JS" }],
+  });
+
+  // Extract text from OpenAI chunks and pass as AsyncIterable<string>
+  async function* textChunks() {
+    for await (const chunk of completion) {
+      const text = chunk.choices[0]?.delta?.content;
+      if (text) yield text;
+    }
+  }
+
+  const stream = streamPrompt(textChunks());
+  const response = await readStream(stream!);
+  console.log(response);
 }
 
 run();
 ```
 
-### Saving Streamed Response to a Markdown File
+### With Anthropic
 
 ```ts
-import { createCompletionAndStream, readStream } from "llm-prompt-stream";
+import Anthropic from "@anthropic-ai/sdk";
+import { streamPrompt, readStream } from "llm-prompt-stream";
 
-const openAIKey = "your-api-key";
-const messages = [{ role: "user", content: "Give me a summary of AI." }];
+const client = new Anthropic({ apiKey: "your-key" });
 
 async function run() {
-  const stream = await createCompletionAndStream(openAIKey, messages);
-  await readStream(stream, true, "output.md");
-  console.log("Response saved to output.md!");
+  const stream = client.messages.stream({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1024,
+    messages: [{ role: "user", content: "Explain closures in JS" }],
+  });
+
+  async function* textChunks() {
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        yield event.delta.text;
+      }
+    }
+  }
+
+  const mdStream = streamPrompt(textChunks());
+  const response = await readStream(mdStream!);
+  console.log(response);
 }
 
 run();
 ```
 
-## Current State
+### Generic AsyncIterable
 
-- Stable with a clear public API exported from `src/index.ts` via `src/utils.ts`
-- Basic test coverage mocking the OpenAI SDK with a 10,000-line markdown generator
-- Published as a package with type definitions
-- Dual format output (ESM + CommonJS) for broad compatibility
+```ts
+import { streamPrompt, readStream } from "llm-prompt-stream";
+
+async function* mySource(): AsyncIterable<string> {
+  yield "# Hello\n\n";
+  yield "This is ";
+  yield "streamed markdown.\n";
+}
+
+const stream = streamPrompt(mySource());
+const response = await readStream(stream!);
+console.log(response);
+```
+
+### Saving Response to a File
+
+```ts
+import { streamPrompt, readStream } from "llm-prompt-stream";
+
+// ... set up your source as above
+const stream = streamPrompt(source());
+await readStream(stream!, true, "output.md");
+console.log("Response saved to output.md!");
+```
 
 ## Running Tests
 
