@@ -1,17 +1,20 @@
-# 📜 llm-prompt-stream
+# llm-prompt-stream
 
-A lightweight Node.js module for streaming OpenAI responses with complete markdown chunks for improved readability during streaming.
+A Node.js/TypeScript library that streams OpenAI API responses while keeping markdown formatting intact. The core problem it solves: when you stream LLM responses token-by-token, markdown syntax can break mid-render. This library buffers content intelligently and only flushes complete markdown elements.
 
-Avoid broken markdown syntax during stream so the end user sees the content formatted correctly.
+## Key Architecture
 
-## 🚀 Features
+- **`streamPrompt()`** — The main function. Takes an OpenAI completion stream, buffers chunks, and splits on markdown boundaries (headings, bullet points, numbered lists, newlines) using a lookahead regex. Returns a `ReadableStream`.
+- **`setUpCompletionForStream()`** — Sets up the OpenAI client and creates a streaming completion with `gpt-4o-mini`.
+- **`createCompletionAndStream()`** — Convenience wrapper combining setup + streaming.
+- **`readStream()`** — Consumes a stream, optionally writes to a file, and returns the full response as a string. Supports a `logInfo` flag for console output.
+- **`parseMarkdownToCompletions()`** — A generator that converts markdown into mock OpenAI chunks for testing.
 
-- ✅ **Streaming OpenAI responses** in real-time.
-- ✅ **Markdown support** for structured responses.
-- ✅ **Write streamed responses to a file**.
-- ✅ **Mock data support** for testing.
+## Tech Stack
 
-## 📦 Installation
+TypeScript, tsup (dual ESM/CJS build), Vitest for testing, OpenAI SDK.
+
+## Installation
 
 Install via npm:
 
@@ -19,14 +22,13 @@ Install via npm:
 npm install llm-prompt-stream
 ```
 
-## 🔧 Usage
+## Usage
 
-### **Basic Example: Streaming an OpenAI Completion**
+### Basic Example: Streaming an OpenAI Completion
 
 ```ts
 import { createCompletionAndStream, readStream } from "llm-prompt-stream";
 
-// Your OpenAI API key
 const openAIKey = "your-api-key";
 
 const messages = [
@@ -43,9 +45,7 @@ async function run() {
 run();
 ```
 
----
-
-### **Saving Streamed Response to a Markdown File**
+### Saving Streamed Response to a Markdown File
 
 ```ts
 import { createCompletionAndStream, readStream } from "llm-prompt-stream";
@@ -62,34 +62,29 @@ async function run() {
 run();
 ```
 
-## 🧪 Running Tests
+## Current State
 
-To run tests locally:
+- Stable with a clear public API exported from `src/index.ts` via `src/utils.ts`
+- Basic test coverage mocking the OpenAI SDK with a 10,000-line markdown generator
+- Published as a package with type definitions
+- Dual format output (ESM + CommonJS) for broad compatibility
+
+## Running Tests
 
 ```sh
 npm test
 ```
 
----
+## License
 
-## 📜 License
+This project is licensed under the MIT License.
 
-This project is licensed under the **MIT License**.
-
----
-
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Feel free to open an issue or submit a PR.
 
 1. Fork the repo
-2. Clone it: \`git clone https://github.com/yourusername/llm-prompt-stream.git\`
-3. Install dependencies: \`npm install\`
+2. Clone it: `git clone https://github.com/yourusername/llm-prompt-stream.git`
+3. Install dependencies: `npm install`
 4. Make changes & commit
-5. Submit a pull request!
-
----
-
-## ⭐ Support
-
-If you like this package, give it a ⭐ on GitHub!
+5. Submit a pull request
