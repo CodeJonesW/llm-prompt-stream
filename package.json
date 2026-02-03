@@ -1,6 +1,6 @@
 {
   "name": "llm-prompt-stream",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "",
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
